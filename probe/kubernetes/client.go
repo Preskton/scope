@@ -26,6 +26,7 @@ type Client interface {
 	WalkServices(f func(Service) error) error
 	WalkDeployments(f func(Deployment) error) error
 	WalkReplicaSets(f func(ReplicaSet) error) error
+	WalkDaemonSets(f func(DaemonSet) error) error
 	WalkReplicationControllers(f func(ReplicationController) error) error
 	WalkNodes(f func(*api.Node) error) error
 
@@ -46,6 +47,7 @@ type client struct {
 	serviceStore               *cache.StoreToServiceLister
 	deploymentStore            *cache.StoreToDeploymentLister
 	replicaSetStore            *cache.StoreToReplicaSetLister
+	daemonSetStore             *cache.StoreToDaemonSetLister
 	replicationControllerStore *cache.StoreToReplicationControllerLister
 	nodeStore                  *cache.StoreToNodeLister
 
@@ -154,6 +156,7 @@ func NewClient(config ClientConfig) (Client, error) {
 	} else {
 		result.deploymentStore = &cache.StoreToDeploymentLister{Store: result.setupStore(ec, "deployments", &extensions.Deployment{})}
 		result.replicaSetStore = &cache.StoreToReplicaSetLister{Store: result.setupStore(ec, "replicasets", &extensions.ReplicaSet{})}
+		result.daemonSetStore = &cache.StoreToDaemonSetLister{Store: result.setupStore(ec, "daemonsets", &extensions.DaemonSet{})}
 	}
 
 	return result, nil
@@ -248,6 +251,20 @@ func (c *client) WalkReplicationControllers(f func(ReplicationController) error)
 	}
 	for i := range list {
 		if err := f(NewReplicationController(&(list[i]))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WalkDaemonSets calls f for each daemonset
+func (c *client) WalkDaemonSets(f func(DaemonSet) error) error {
+	list, err := c.daemonSetStore.List()
+	if err != nil {
+		return err
+	}
+	for i := range list.Items {
+		if err := f(NewDaemonSet(&(list.Items[i]))); err != nil {
 			return err
 		}
 	}
